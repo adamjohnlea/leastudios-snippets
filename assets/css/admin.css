@@ -1,0 +1,309 @@
+/**
+ * leaStudios Snippets — Admin Styles
+ *
+ * @package LEAStudios\Snippets
+ */
+
+/* ==========================================================================
+   Code Editor Metabox
+   ========================================================================== */
+
+.leastudios-snippets-editor-wrap {
+	padding: 0;
+}
+
+.leastudios-snippets-type-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 12px;
+}
+
+.leastudios-snippets-type-row label {
+	font-weight: 600;
+}
+
+.leastudios-snippets-type-row select {
+	min-width: 160px;
+}
+
+/* PHP Warning Box */
+.leastudios-snippets-warning {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 12px 16px;
+	margin-bottom: 12px;
+	background: #fff3cd;
+	border: 1px solid #ffc107;
+	border-left: 4px solid #e6a800;
+	border-radius: 3px;
+}
+
+.leastudios-snippets-warning .dashicons {
+	color: #e6a800;
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+	margin-top: 2px;
+	flex-shrink: 0;
+}
+
+.leastudios-snippets-warning p {
+	margin: 0;
+	color: #664d03;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+/* CodeMirror Container */
+.leastudios-snippets-codemirror-wrap {
+	margin-bottom: 12px;
+}
+
+.leastudios-snippets-codemirror-wrap .CodeMirror {
+	min-height: 300px;
+	height: auto;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+}
+
+.leastudios-snippets-codemirror-wrap textarea {
+	width: 100%;
+	min-height: 300px;
+	font-family: Consolas, Monaco, monospace;
+	font-size: 13px;
+	tab-size: 4;
+}
+
+/* Active Toggle */
+.leastudios-snippets-active-row {
+	padding: 12px 0 4px;
+	border-top: 1px solid #dcdcde;
+}
+
+.leastudios-snippets-active-row label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.leastudios-snippets-active-row input[type="checkbox"] {
+	width: auto;
+}
+
+/* ==========================================================================
+   Insert Location Metabox
+   ========================================================================== */
+
+.leastudios-snippets-location-wrap p {
+	margin-bottom: 12px;
+}
+
+.leastudios-snippets-location-wrap label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.leastudios-snippets-location-wrap select,
+.leastudios-snippets-location-wrap input[type="text"],
+.leastudios-snippets-location-wrap input[type="number"] {
+	width: 100%;
+}
+
+/* ==========================================================================
+   Conditions Metabox
+   ========================================================================== */
+
+.leastudios-snippets-conditions-wrap {
+	padding: 0;
+}
+
+#leastudios-snippets-conditions-rows {
+	margin-bottom: 12px;
+}
+
+.leastudios-snippets-condition-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	flex-wrap: wrap;
+}
+
+.leastudios-snippets-condition-row select {
+	min-width: 140px;
+}
+
+.leastudios-snippets-condition-row .leastudios-snippets-condition-type {
+	flex: 1;
+	min-width: 140px;
+}
+
+.leastudios-snippets-condition-row .leastudios-snippets-condition-operator {
+	width: 100px;
+	flex-shrink: 0;
+}
+
+.leastudios-snippets-condition-row .leastudios-snippets-condition-value {
+	flex: 1;
+	min-width: 120px;
+}
+
+.leastudios-snippets-remove-condition {
+	flex-shrink: 0;
+	padding: 2px 6px !important;
+	color: #b32d2e;
+	border-color: #b32d2e !important;
+}
+
+.leastudios-snippets-remove-condition:hover {
+	background: #b32d2e !important;
+	color: #fff;
+}
+
+.leastudios-snippets-remove-condition .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+}
+
+/* ==========================================================================
+   Library Page
+   ========================================================================== */
+
+.leastudios-snippets-library-wrap {
+	max-width: 1200px;
+}
+
+.leastudios-snippets-library-wrap > .description {
+	margin-bottom: 20px;
+	font-size: 14px;
+}
+
+.leastudios-snippets-library-category-heading {
+	margin: 24px 0 12px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #dcdcde;
+	font-size: 18px;
+}
+
+.leastudios-snippets-library-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.leastudios-snippets-library-card {
+	display: flex;
+	flex-direction: column;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 16px;
+	transition: box-shadow 0.15s ease;
+}
+
+.leastudios-snippets-library-card:hover {
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.leastudios-snippets-library-card--unavailable {
+	opacity: 0.6;
+	background: #f6f7f7;
+}
+
+.leastudios-snippets-library-card__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.leastudios-snippets-library-card__title {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+.leastudios-snippets-library-card__badges {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+.leastudios-snippets-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.leastudios-snippets-badge--php {
+	background: #dbeafe;
+	color: #1e40af;
+}
+
+.leastudios-snippets-badge--js {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.leastudios-snippets-badge--css {
+	background: #d1fae5;
+	color: #065f46;
+}
+
+.leastudios-snippets-badge--html {
+	background: #fce7f3;
+	color: #9d174d;
+}
+
+.leastudios-snippets-badge--plugin {
+	background: #f3e8ff;
+	color: #6b21a8;
+}
+
+.leastudios-snippets-library-card__description {
+	margin: 0 0 12px;
+	font-size: 13px;
+	color: #50575e;
+	line-height: 1.5;
+	flex: 1;
+}
+
+.leastudios-snippets-library-card__footer {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding-top: 12px;
+	border-top: 1px solid #f0f0f1;
+}
+
+.leastudios-snippets-library-card__requires {
+	font-size: 12px;
+	color: #8c8f94;
+	font-style: italic;
+}
+
+/* ==========================================================================
+   Safe Mode Notice
+   ========================================================================== */
+
+.leastudios-snippets-safe-mode-notice {
+	border-left-color: #dba617;
+}
+
+.leastudios-snippets-safe-mode-notice .button {
+	margin-right: 8px;
+}
