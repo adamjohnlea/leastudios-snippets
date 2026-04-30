@@ -1,6 +1,6 @@
 <?php
 /**
- * Nonce helper.
+ * Nonce helper for secure form/action verification.
  *
  * @package LEAStudios\Snippets\Security
  */
@@ -13,39 +13,59 @@ namespace LEAStudios\Snippets\Security;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Centralized nonce management.
+ * Centralized nonce management with a fixed plugin prefix.
+ *
+ * The class is intentionally identical (modulo the namespace and PREFIX
+ * value) across every leastudios-* plugin — see
+ * `leastudios-dev-tools/bin/check-shared.sh` for the drift guard.
  */
-class Nonce {
+final class Nonce {
 
 	/**
-	 * Create a nonce.
+	 * Nonce prefix for all of this plugin's nonces.
+	 */
+	private const PREFIX = 'leastudios_snippets_';
+
+	/**
+	 * Create a nonce for a specific action.
 	 *
 	 * @param string $action The action name.
-	 * @return string
+	 * @return string The nonce value.
 	 */
 	public static function create( string $action ): string {
-		return wp_create_nonce( 'leastudios_snippets_' . $action );
+		return wp_create_nonce( self::PREFIX . $action );
 	}
 
 	/**
-	 * Verify a nonce.
+	 * Verify a nonce for a specific action.
 	 *
 	 * @param string $nonce  The nonce to verify.
 	 * @param string $action The action name.
-	 * @return bool
+	 * @return bool Whether the nonce is valid.
 	 */
 	public static function verify( string $nonce, string $action ): bool {
-		return (bool) wp_verify_nonce( $nonce, 'leastudios_snippets_' . $action );
+		return (bool) wp_verify_nonce( $nonce, self::PREFIX . $action );
+	}
+
+	/**
+	 * Verify a nonce from the request and die on failure.
+	 *
+	 * @param string $action    The action name.
+	 * @param string $param_key The request parameter key. Default '_wpnonce'.
+	 * @return void
+	 */
+	public static function check_request( string $action, string $param_key = '_wpnonce' ): void {
+		check_admin_referer( self::PREFIX . $action, $param_key );
 	}
 
 	/**
 	 * Verify an AJAX nonce and die on failure.
 	 *
 	 * @param string $action    The action name.
-	 * @param string $param_key The request parameter key.
+	 * @param string $param_key The request parameter key. Default '_wpnonce'.
 	 * @return void
 	 */
 	public static function check_ajax( string $action, string $param_key = '_wpnonce' ): void {
-		check_ajax_referer( 'leastudios_snippets_' . $action, $param_key );
+		check_ajax_referer( self::PREFIX . $action, $param_key );
 	}
 }
