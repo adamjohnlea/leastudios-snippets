@@ -24,8 +24,13 @@ class Condition_Checker {
 	 * Uses AND logic: all conditions must pass for the snippet to execute.
 	 * An empty conditions array means no restrictions (always execute).
 	 *
-	 * @param array<int, array<string, string>> $conditions The conditions array.
-	 * @param int                               $snippet_id The snippet post ID.
+	 * @param array<int, mixed> $conditions The conditions array. Each element is
+	 *                                      *expected* to be `array<string, string>`
+	 *                                      with type/value/operator keys, but the
+	 *                                      input is `json_decode($meta, true)`, so
+	 *                                      malformed rows are validated per-element
+	 *                                      below.
+	 * @param int               $snippet_id The snippet post ID.
 	 * @return bool
 	 */
 	public function check( array $conditions, int $snippet_id = 0 ): bool {

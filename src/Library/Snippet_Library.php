@@ -242,12 +242,15 @@ class Snippet_Library {
 		 */
 		do_action( 'leastudios_snippets_before_library_install', $snippet );
 
+		// Pass `true` so wp_insert_post returns WP_Error on failure rather
+		// than 0 — the check below would never catch the int-0 failure path.
 		$post_id = wp_insert_post(
 			[
 				'post_type'   => Snippet_Post_Type::POST_TYPE,
 				'post_title'  => $snippet['title'],
 				'post_status' => 'publish',
-			]
+			],
+			true
 		);
 
 		if ( is_wp_error( $post_id ) ) {
