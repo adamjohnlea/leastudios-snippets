@@ -114,12 +114,6 @@ class Library_Page {
 				<?php esc_html_e( 'Browse and install pre-built code snippets. Installed snippets are inactive by default — review and activate them from the editor.', 'leastudios-snippets' ); ?>
 			</p>
 
-			<?php if ( isset( $_GET['installed'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-				<div class="notice notice-success is-dismissible">
-					<p><?php esc_html_e( 'Snippet installed successfully! It has been added as inactive — review the code and activate when ready.', 'leastudios-snippets' ); ?></p>
-				</div>
-			<?php endif; ?>
-
 			<?php foreach ( $categories as $cat_slug => $cat_label ) : ?>
 				<?php
 				$cat_snippets = array_filter(
@@ -171,7 +165,7 @@ class Library_Page {
 								<?php if ( $is_available ) : ?>
 									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 										<input type="hidden" name="action" value="leastudios_snippets_install_library" />
-										<input type="hidden" name="snippet_title" value="<?php echo esc_attr( $snippet['title'] ); ?>" />
+										<input type="hidden" name="snippet_slug" value="<?php echo esc_attr( $snippet['slug'] ?? '' ); ?>" />
 										<?php wp_nonce_field( 'leastudios_snippets_install_library', '_leastudios_snippets_library_nonce' ); ?>
 										<button type="submit" class="button button-primary">
 											<?php esc_html_e( 'Install', 'leastudios-snippets' ); ?>
@@ -213,14 +207,14 @@ class Library_Page {
 			wp_die( esc_html__( 'Security check failed.', 'leastudios-snippets' ) );
 		}
 
-		$title = isset( $_POST['snippet_title'] ) ? sanitize_text_field( wp_unslash( $_POST['snippet_title'] ) ) : '';
+		$slug = isset( $_POST['snippet_slug'] ) ? sanitize_key( wp_unslash( (string) $_POST['snippet_slug'] ) ) : '';
 
-		if ( empty( $title ) ) {
-			wp_die( esc_html__( 'Invalid snippet title.', 'leastudios-snippets' ) );
+		if ( '' === $slug ) {
+			wp_die( esc_html__( 'Invalid snippet identifier.', 'leastudios-snippets' ) );
 		}
 
 		try {
-			$post_id = $this->library->install_snippet( $title );
+			$post_id = $this->library->install_snippet( $slug );
 		} catch ( \Exception $e ) {
 			wp_die( esc_html( $e->getMessage() ) );
 		}
@@ -231,9 +225,9 @@ class Library_Page {
 		 * @since 1.0.0
 		 *
 		 * @param int    $post_id The new snippet post ID.
-		 * @param string $title   The library snippet title.
+		 * @param string $slug    The library snippet slug.
 		 */
-		do_action( 'leastudios_snippets_library_snippet_installed', $post_id, $title );
+		do_action( 'leastudios_snippets_library_snippet_installed', $post_id, $slug );
 
 		wp_safe_redirect(
 			add_query_arg(

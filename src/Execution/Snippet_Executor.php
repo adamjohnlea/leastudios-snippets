@@ -47,15 +47,6 @@ class Snippet_Executor {
 	}
 
 	/**
-	 * Boot the executor by hooking into WordPress init.
-	 *
-	 * @return void
-	 */
-	public function boot(): void {
-		add_action( 'init', [ $this, 'init' ], 1 );
-	}
-
-	/**
 	 * Query all active snippets, group by location, and register hooks.
 	 *
 	 * Runs on `init` at priority 1 so snippets are available as early as possible.
@@ -63,7 +54,59 @@ class Snippet_Executor {
 	 * @return void
 	 */
 	public function init(): void {
+		// Hook cache invalidation as soon as the executor wires up so a save
+		// or delete during this same request flushes the cache for the next.
+		add_action( 'save_post_' . Snippet_Post_Type::POST_TYPE, [ self::class, 'invalidate_active_cache' ] );
+		add_action( 'deleted_post', [ self::class, 'invalidate_active_cache' ] );
+
 		$safe_mode_ids = $this->get_safe_mode_ids();
+
+		$active_ids = $this->get_active_snippet_ids();
+
+		if ( empty( $active_ids ) ) {
+			return;
+		}
+
+		foreach ( $active_ids as $snippet_id ) {
+			if ( in_array( $snippet_id, $safe_mode_ids, true ) ) {
+				continue;
+			}
+
+			$snippet = get_post( $snippet_id );
+
+			if ( ! $snippet instanceof WP_Post || 'publish' !== $snippet->post_status ) {
+				continue;
+			}
+
+			$location = (string) get_post_meta( $snippet->ID, Snippet_Post_Type::META_LOCATION, true );
+
+			if ( '' === $location ) {
+				$location = 'everywhere';
+			}
+
+			$this->snippets_by_location[ $location ][] = $snippet;
+		}
+
+		$this->register_location_hooks( $this->snippets_by_location );
+	}
+
+	/**
+	 * Cache key for the list of currently-active snippet post IDs.
+	 */
+	private const ACTIVE_IDS_CACHE_KEY = 'leastudios_snippets_active_ids';
+
+	/**
+	 * Get the list of active-snippet post IDs, hitting an object cache to
+	 * avoid the meta_query on every front-end request.
+	 *
+	 * @return array<int, int>
+	 */
+	private function get_active_snippet_ids(): array {
+		$cached = wp_cache_get( self::ACTIVE_IDS_CACHE_KEY, 'leastudios_snippets' );
+
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
 
 		$query = new WP_Query(
 			[
@@ -71,6 +114,7 @@ class Snippet_Executor {
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
 				'no_found_rows'  => true,
+				'fields'         => 'ids',
 				'meta_query'     => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 					[
 						'key'   => Snippet_Post_Type::META_ACTIVE,
@@ -80,30 +124,20 @@ class Snippet_Executor {
 			]
 		);
 
-		if ( ! $query->have_posts() ) {
-			return;
-		}
+		$ids = array_map( 'intval', $query->posts );
 
-		foreach ( $query->posts as $snippet ) {
-			if ( ! $snippet instanceof WP_Post ) {
-				continue;
-			}
+		wp_cache_set( self::ACTIVE_IDS_CACHE_KEY, $ids, 'leastudios_snippets' );
 
-			// Skip snippets in safe mode.
-			if ( in_array( $snippet->ID, $safe_mode_ids, true ) ) {
-				continue;
-			}
+		return $ids;
+	}
 
-			$location = (string) get_post_meta( $snippet->ID, Snippet_Post_Type::META_LOCATION, true );
-
-			if ( empty( $location ) ) {
-				$location = 'everywhere';
-			}
-
-			$this->snippets_by_location[ $location ][] = $snippet;
-		}
-
-		$this->register_location_hooks( $this->snippets_by_location );
+	/**
+	 * Drop the active-snippet ID cache after any snippet save or delete.
+	 *
+	 * @return void
+	 */
+	public static function invalidate_active_cache(): void {
+		wp_cache_delete( self::ACTIVE_IDS_CACHE_KEY, 'leastudios_snippets' );
 	}
 
 	/**

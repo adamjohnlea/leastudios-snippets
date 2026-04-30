@@ -97,9 +97,15 @@ class Condition_Checker {
 	 * @return bool
 	 */
 	private function check_page_type( string $value ): bool {
-		// These functions are only available after the main query has run.
+		// `is_*()` page-type checks are only meaningful after `wp` has fired
+		// and the main query has been resolved. If a snippet runs earlier
+		// (e.g. the `everywhere` location at plugins_loaded), short-circuit
+		// to *false* so the conditional gate denies execution rather than
+		// silently passing every page-type check. This matches the user's
+		// expectation that "run only on single posts" means "do nothing
+		// before we know the page type."
 		if ( ! did_action( 'wp' ) ) {
-			return true;
+			return false;
 		}
 
 		return match ( $value ) {
@@ -146,8 +152,9 @@ class Condition_Checker {
 	 * @return bool
 	 */
 	private function check_post_type( string $post_type ): bool {
+		// See check_page_type: deny when the main query has not yet resolved.
 		if ( ! did_action( 'wp' ) ) {
-			return true;
+			return false;
 		}
 
 		return get_post_type() === $post_type;
@@ -160,8 +167,9 @@ class Condition_Checker {
 	 * @return bool
 	 */
 	private function check_page_id( string $page_id ): bool {
+		// See check_page_type: deny when the main query has not yet resolved.
 		if ( ! did_action( 'wp' ) ) {
-			return true;
+			return false;
 		}
 
 		return get_the_ID() === (int) $page_id;

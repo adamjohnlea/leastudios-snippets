@@ -33,6 +33,11 @@ class Snippet_Editor {
 	private const NONCE_FIELD = '_leastudios_snippets_nonce';
 
 	/**
+	 * Maximum allowed snippet code size in bytes.
+	 */
+	private const MAX_CODE_BYTES = 262144;
+
+	/**
 	 * Initialize hooks.
 	 *
 	 * @return void
@@ -226,22 +231,7 @@ class Snippet_Editor {
 			$conditions = [];
 		}
 
-		$condition_types = [
-			'page_type'    => __( 'Page Type', 'leastudios-snippets' ),
-			'user_logged'  => __( 'User Logged In', 'leastudios-snippets' ),
-			'user_role'    => __( 'User Role', 'leastudios-snippets' ),
-			'post_type'    => __( 'Post Type', 'leastudios-snippets' ),
-			'page_post_id' => __( 'Page/Post ID', 'leastudios-snippets' ),
-		];
-
-		/**
-		 * Filters the available condition types for snippets.
-		 *
-		 * @since 1.0.0
-		 *
-		 * @param array<string, string> $condition_types Condition slug => label.
-		 */
-		$condition_types = (array) apply_filters( 'leastudios_snippets_condition_types', $condition_types );
+		$condition_types = $this->get_condition_types();
 		?>
 		<div class="leastudios-snippets-conditions-wrap">
 			<div id="leastudios-snippets-conditions-rows">
@@ -333,9 +323,13 @@ class Snippet_Editor {
 		do_action( 'leastudios_snippets_before_save', $post_id, $post );
 
 		// Save code — use wp_unslash but do NOT sanitize_text_field (would break code).
+		// Cap at 256 KB so a hostile or run-away client cannot blow up post_meta
+		// or the eval() path. Real-world snippets are kilobytes at most.
 		if ( isset( $_POST['leastudios_snippets_code'] ) ) {
 			$code = wp_unslash( $_POST['leastudios_snippets_code'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-			update_post_meta( $post_id, Snippet_Post_Type::META_CODE, $code );
+			if ( is_string( $code ) && strlen( $code ) <= self::MAX_CODE_BYTES ) {
+				update_post_meta( $post_id, Snippet_Post_Type::META_CODE, $code );
+			}
 		}
 
 		// Save type.
@@ -442,17 +436,37 @@ class Snippet_Editor {
 			[
 				'nonce'          => wp_create_nonce( self::NONCE_ACTION ),
 				'editorSettings' => false !== $editor_settings ? $editor_settings : [],
-				'conditionTypes' => (array) apply_filters(
-					'leastudios_snippets_condition_types',
-					[
-						'page_type'    => __( 'Page Type', 'leastudios-snippets' ),
-						'user_logged'  => __( 'User Logged In', 'leastudios-snippets' ),
-						'user_role'    => __( 'User Role', 'leastudios-snippets' ),
-						'post_type'    => __( 'Post Type', 'leastudios-snippets' ),
-						'page_post_id' => __( 'Page/Post ID', 'leastudios-snippets' ),
-					]
-				),
+				'conditionTypes' => $this->get_condition_types(),
 			]
 		);
+	}
+
+	/**
+	 * Single source of truth for the snippet condition-type map.
+	 *
+	 * Used both by the meta-box renderer and by the JS-side editor that
+	 * builds the condition-row UI. Both call sites previously duplicated
+	 * the literal array and the filter, drifting whenever new types were
+	 * added.
+	 *
+	 * @return array<string, string>
+	 */
+	private function get_condition_types(): array {
+		$condition_types = [
+			'page_type'    => __( 'Page Type', 'leastudios-snippets' ),
+			'user_logged'  => __( 'User Logged In', 'leastudios-snippets' ),
+			'user_role'    => __( 'User Role', 'leastudios-snippets' ),
+			'post_type'    => __( 'Post Type', 'leastudios-snippets' ),
+			'page_post_id' => __( 'Page/Post ID', 'leastudios-snippets' ),
+		];
+
+		/**
+		 * Filters the available condition types for snippets.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param array<string, string> $condition_types Condition slug => label.
+		 */
+		return (array) apply_filters( 'leastudios_snippets_condition_types', $condition_types );
 	}
 }

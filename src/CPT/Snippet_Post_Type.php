@@ -73,6 +73,34 @@ class Snippet_Post_Type {
 	public const META_CUSTOM_HOOK = '_leastudios_snippets_custom_hook';
 
 	/**
+	 * Every capability the snippet CPT introduces. We map all of them to
+	 * `manage_options` via the {@see map_capabilities} filter, so only
+	 * administrators can create, edit, publish, or delete snippets — which
+	 * is required because publishing a snippet means executing arbitrary
+	 * PHP / JS / CSS / HTML on the site.
+	 *
+	 * @var array<int, string>
+	 */
+	private const SNIPPET_CAPABILITIES = [
+		// Meta caps (per-post).
+		'edit_leastudios_snippet',
+		'read_leastudios_snippet',
+		'delete_leastudios_snippet',
+		// Primitive caps.
+		'edit_leastudios_snippets',
+		'edit_others_leastudios_snippets',
+		'edit_private_leastudios_snippets',
+		'edit_published_leastudios_snippets',
+		'publish_leastudios_snippets',
+		'read_private_leastudios_snippets',
+		'delete_leastudios_snippets',
+		'delete_private_leastudios_snippets',
+		'delete_published_leastudios_snippets',
+		'delete_others_leastudios_snippets',
+		'create_leastudios_snippets',
+	];
+
+	/**
 	 * Available auto-insert locations.
 	 *
 	 * @var array<string, string>
@@ -94,13 +122,24 @@ class Snippet_Post_Type {
 	];
 
 	/**
-	 * Initialize the post type by registering hooks.
+	 * Gate every snippet capability on `manage_options`.
 	 *
-	 * @return void
+	 * WordPress derives a family of primitive and meta capabilities from
+	 * `capability_type = 'leastudios_snippet'`. Without this filter those
+	 * primitive caps are not granted to any role, so nobody can edit
+	 * snippets. Mapping them all to `manage_options` cleanly delegates the
+	 * decision to the existing site-admin gate without polluting role caps.
+	 *
+	 * @param array<int, string> $caps The required primitive capabilities.
+	 * @param string             $cap  The capability being checked.
+	 * @return array<int, string>
 	 */
-	public function init(): void {
-		add_action( 'init', [ __CLASS__, 'register' ] );
-		add_action( 'init', [ __CLASS__, 'register_meta' ] );
+	public static function map_capabilities( array $caps, string $cap ): array {
+		if ( in_array( $cap, self::SNIPPET_CAPABILITIES, true ) ) {
+			return [ 'manage_options' ];
+		}
+
+		return $caps;
 	}
 
 	/**
@@ -154,7 +193,11 @@ class Snippet_Post_Type {
 			'show_in_menu'        => 'leastudios-snippets',
 			'show_in_rest'        => false,
 			'supports'            => [ 'title', 'revisions' ],
-			'capability_type'     => 'post',
+			// Custom capability_type so that publishing/editing snippets
+			// does not inherit from the generic `post` cap family. The
+			// {@see map_capabilities} filter routes all derived caps to
+			// `manage_options`.
+			'capability_type'     => [ 'leastudios_snippet', 'leastudios_snippets' ],
 			'map_meta_cap'        => true,
 			'has_archive'         => false,
 			'rewrite'             => false,
@@ -191,7 +234,7 @@ class Snippet_Post_Type {
 				'default'           => '',
 				'sanitize_callback' => null, // Raw code; sanitized on output.
 				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+					return current_user_can( 'manage_options' );
 				},
 			],
 			self::META_TYPE        => [
@@ -201,7 +244,7 @@ class Snippet_Post_Type {
 				'default'           => 'php',
 				'sanitize_callback' => [ __CLASS__, 'sanitize_type' ],
 				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+					return current_user_can( 'manage_options' );
 				},
 			],
 			self::META_LOCATION    => [
@@ -211,7 +254,7 @@ class Snippet_Post_Type {
 				'default'           => 'everywhere',
 				'sanitize_callback' => 'sanitize_text_field',
 				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+					return current_user_can( 'manage_options' );
 				},
 			],
 			self::META_ACTIVE      => [
@@ -221,7 +264,7 @@ class Snippet_Post_Type {
 				'default'           => '0',
 				'sanitize_callback' => [ __CLASS__, 'sanitize_active' ],
 				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+					return current_user_can( 'manage_options' );
 				},
 			],
 			self::META_PRIORITY    => [
@@ -231,7 +274,7 @@ class Snippet_Post_Type {
 				'default'           => '10',
 				'sanitize_callback' => [ __CLASS__, 'sanitize_priority' ],
 				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+					return current_user_can( 'manage_options' );
 				},
 			],
 			self::META_CONDITIONS  => [
@@ -241,7 +284,7 @@ class Snippet_Post_Type {
 				'default'           => '',
 				'sanitize_callback' => [ __CLASS__, 'sanitize_conditions' ],
 				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+					return current_user_can( 'manage_options' );
 				},
 			],
 			self::META_CUSTOM_HOOK => [
@@ -251,7 +294,7 @@ class Snippet_Post_Type {
 				'default'           => '',
 				'sanitize_callback' => 'sanitize_text_field',
 				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+					return current_user_can( 'manage_options' );
 				},
 			],
 		];
