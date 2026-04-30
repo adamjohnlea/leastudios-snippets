@@ -25,6 +25,35 @@ define( 'LEASTUDIOS_SNIPPETS_FILE', __FILE__ );
 define( 'LEASTUDIOS_SNIPPETS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LEASTUDIOS_SNIPPETS_URL', plugin_dir_url( __FILE__ ) );
 
+/**
+ * Run on plugin activation.
+ *
+ * Registered above the vendor-autoload check so a botched install
+ * (composer not yet run) still gets a working activation hook. The
+ * call to `Snippet_Post_Type::register()` falls back to a no-op when
+ * the autoloader hasn't run; the `flush_rewrite_rules()` call is the
+ * minimum we want on every activation regardless.
+ *
+ * @return void
+ */
+function leastudios_snippets_activate(): void {
+	if ( class_exists( LEAStudios\Snippets\CPT\Snippet_Post_Type::class ) ) {
+		LEAStudios\Snippets\CPT\Snippet_Post_Type::register();
+	}
+	flush_rewrite_rules();
+}
+register_activation_hook( __FILE__, 'leastudios_snippets_activate' );
+
+/**
+ * Run on plugin deactivation.
+ *
+ * @return void
+ */
+function leastudios_snippets_deactivate(): void {
+	flush_rewrite_rules();
+}
+register_deactivation_hook( __FILE__, 'leastudios_snippets_deactivate' );
+
 if ( ! file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 	add_action(
 		'admin_notices',
@@ -68,24 +97,3 @@ function leastudios_snippets_php_version_notice(): void {
 		esc_html__( 'leaStudios Snippets requires PHP 8.1 or higher.', 'leastudios-snippets' )
 	);
 }
-
-/**
- * Run on plugin activation.
- *
- * @return void
- */
-function leastudios_snippets_activate(): void {
-	LEAStudios\Snippets\CPT\Snippet_Post_Type::register();
-	flush_rewrite_rules();
-}
-register_activation_hook( __FILE__, 'leastudios_snippets_activate' );
-
-/**
- * Run on plugin deactivation.
- *
- * @return void
- */
-function leastudios_snippets_deactivate(): void {
-	flush_rewrite_rules();
-}
-register_deactivation_hook( __FILE__, 'leastudios_snippets_deactivate' );

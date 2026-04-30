@@ -32,8 +32,12 @@ final class Plugin {
 	 * @return void
 	 */
 	public function init(): void {
-		// Register CPT.
+		// Register CPT, post-meta, and the capability gate. The gate must
+		// hook map_meta_cap before any cap check fires, so we register it
+		// at plugins_loaded time rather than waiting for `init`.
 		add_action( 'init', [ Snippet_Post_Type::class, 'register' ] );
+		add_action( 'init', [ Snippet_Post_Type::class, 'register_meta' ] );
+		add_filter( 'map_meta_cap', [ Snippet_Post_Type::class, 'map_capabilities' ], 10, 2 );
 
 		// Execute active snippets.
 		$condition_checker = new Condition_Checker();

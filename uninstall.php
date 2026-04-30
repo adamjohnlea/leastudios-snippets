@@ -2,6 +2,11 @@
 /**
  * Uninstall handler.
  *
+ * Deletes all snippet posts in batches so a site with thousands of
+ * snippets does not time out the uninstall request, and clears every
+ * snippet error transient so per-snippet error data does not survive
+ * the plugin removal.
+ *
  * @package LEAStudios\Snippets
  */
 
@@ -9,19 +14,41 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-// Delete all snippet posts.
-$leastudios_snippets_posts = get_posts(
-	[
-		'post_type'   => 'leastudios_snippet',
-		'numberposts' => -1,
-		'post_status' => 'any',
-		'fields'      => 'ids',
-	]
-);
+global $wpdb;
 
-foreach ( $leastudios_snippets_posts as $leastudios_snippets_post_id ) {
-	wp_delete_post( $leastudios_snippets_post_id, true );
+// Delete snippet posts in batches.
+$leastudios_snippets_batch_size = 100;
+
+while ( true ) {
+	$leastudios_snippets_post_ids = get_posts(
+		[
+			'post_type'   => 'leastudios_snippet',
+			'numberposts' => $leastudios_snippets_batch_size,
+			'post_status' => 'any',
+			'fields'      => 'ids',
+		]
+	);
+
+	if ( empty( $leastudios_snippets_post_ids ) ) {
+		break;
+	}
+
+	foreach ( $leastudios_snippets_post_ids as $leastudios_snippets_post_id ) {
+		wp_delete_post( $leastudios_snippets_post_id, true );
+	}
 }
+
+// Drop every per-snippet error transient. The Snippet_Executor's safe-mode
+// path stashes errors under `leastudios_snippets_error_<id>`; removing the
+// post above doesn't clean these up.
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+		$wpdb->esc_like( '_transient_leastudios_snippets_error_' ) . '%',
+		$wpdb->esc_like( '_transient_timeout_leastudios_snippets_error_' ) . '%'
+	)
+);
 
 // Delete options.
 delete_option( 'leastudios_snippets_safe_mode' );
