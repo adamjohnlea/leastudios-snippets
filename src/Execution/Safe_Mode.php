@@ -108,6 +108,128 @@ class Safe_Mode {
 	}
 
 	/**
+	 * Register the shutdown handler and warning-cleanup hook.
+	 *
+	 * Uses register_shutdown_function() directly so the handler runs even after
+	 * an uncatchable fatal, regardless of WordPress hook state.
+	 *
+	 * @return void
+	 */
+	public function init(): void {
+		register_shutdown_function( [ $this, 'on_shutdown' ] );
+		add_action( 'save_post_' . Snippet_Post_Type::POST_TYPE, [ $this, 'clear_warnings' ] );
+	}
+
+	/**
+	 * Deactivate a snippet and record the error that caused it.
+	 *
+	 * @param int    $snippet_id The snippet post ID.
+	 * @param string $message    The error message.
+	 * @return void
+	 */
+	public function deactivate( int $snippet_id, string $message ): void {
+		update_post_meta( $snippet_id, Snippet_Post_Type::META_ACTIVE, '0' );
+
+		$disabled = $this->get_disabled_ids();
+
+		if ( ! in_array( $snippet_id, $disabled, true ) ) {
+			$disabled[] = $snippet_id;
+			update_option( self::OPTION_SAFE_MODE, $disabled );
+		}
+
+		set_transient( self::ERROR_TRANSIENT_PREFIX . $snippet_id, $message, DAY_IN_SECONDS );
+
+		// update_post_meta() does not fire save_post, so the active-IDs cache
+		// would otherwise keep listing this snippet as active.
+		Snippet_Executor::invalidate_active_cache();
+
+		/**
+		 * Fires when a PHP snippet encounters an error.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param int    $snippet_id    The snippet post ID.
+		 * @param string $error_message The error message.
+		 */
+		do_action( 'leastudios_snippets_php_error', $snippet_id, $message );
+	}
+
+	/**
+	 * Record non-fatal warnings for a snippet without deactivating it.
+	 *
+	 * @param int                $snippet_id The snippet post ID.
+	 * @param array<int, string> $messages   The warning messages.
+	 * @return void
+	 */
+	public function record_warnings( int $snippet_id, array $messages ): void {
+		if ( empty( $messages ) ) {
+			return;
+		}
+
+		set_transient(
+			self::WARNINGS_TRANSIENT_PREFIX . $snippet_id,
+			array_values( $messages ),
+			DAY_IN_SECONDS
+		);
+
+		$index = get_option( self::OPTION_WARNINGS, [] );
+
+		if ( ! is_array( $index ) ) {
+			$index = [];
+		}
+
+		if ( ! in_array( $snippet_id, $index, true ) ) {
+			$index[] = $snippet_id;
+			update_option( self::OPTION_WARNINGS, $index );
+		}
+	}
+
+	/**
+	 * Clear any recorded warnings for a snippet.
+	 *
+	 * @param int $snippet_id The snippet post ID.
+	 * @return void
+	 */
+	public function clear_warnings( int $snippet_id ): void {
+		delete_transient( self::WARNINGS_TRANSIENT_PREFIX . $snippet_id );
+
+		$index = get_option( self::OPTION_WARNINGS, [] );
+
+		if ( is_array( $index ) && in_array( $snippet_id, $index, true ) ) {
+			update_option(
+				self::OPTION_WARNINGS,
+				array_values( array_diff( $index, [ $snippet_id ] ) )
+			);
+		}
+	}
+
+	/**
+	 * Shutdown handler: deactivate a snippet that crashed the request.
+	 *
+	 * @return void
+	 */
+	public function on_shutdown(): void {
+		$last_error = error_get_last();
+		$culprit    = $this->decide_culprit( $last_error, $this->executing_snippet_id );
+
+		if ( null === $culprit ) {
+			return;
+		}
+
+		// $last_error is non-null here: decide_culprit() only returns a non-null
+		// culprit when $last_error has a fatal-class 'type' key, which means PHP
+		// populated the full error struct with all four fields.
+		$message = sprintf(
+			'%s in %s on line %d',
+			(string) $last_error['message'],
+			(string) $last_error['file'],
+			(int) $last_error['line']
+		);
+
+		$this->deactivate( $culprit, $message );
+	}
+
+	/**
 	 * Decide which snippet, if any, caused the request to die.
 	 *
 	 * Returns the executing snippet ID only when the request terminated with a
