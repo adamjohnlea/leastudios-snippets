@@ -79,16 +79,24 @@ this filter — before any cap check fires.
 
 ### Safe mode — fatal-error containment
 
-`execute_php()` installs a custom error handler (catches warnings/notices) and wraps `eval()`
-in `try/catch (\Throwable)` (catches exceptions and `Error`s, including parse errors). On any
-caught error, `handle_php_error()` deactivates the snippet (`META_ACTIVE` → `'0'`), appends its
-ID to the `leastudios_snippets_safe_mode` option, stores the message in a
-`leastudios_snippets_error_{id}` transient, and queues an admin notice. A snippet in safe mode
-will not run again until manually re-enabled. `Safe_Mode_Notice` surfaces this in the admin.
+`Execution/Safe_Mode` owns all error-containment state. `Snippet_Executor` delegates to it:
+it wraps every snippet dispatch in `Safe_Mode::begin()`/`end()` (an "executing snippet"
+marker), and `Safe_Mode` registers a `shutdown` handler. If the request dies with a
+fatal-class error while the marker is set, that snippet crashed it → `Safe_Mode::deactivate()`
+sets `META_ACTIVE` → `'0'`, appends the ID to the `leastudios_snippets_safe_mode` option,
+stores the message in a `leastudios_snippets_error_{id}` transient, and invalidates the
+active-IDs cache. This covers uncatchable fatals (out-of-memory, timeout) *and* fatals in
+deferred hook callbacks — the common case, since most snippets register hooks.
 
-Containment is not total: hard fatals that never surface as `\Throwable` — out-of-memory,
-execution-timeout, or a snippet calling `exit()`/`die()` — still terminate the request and are
-*not* caught or auto-deactivated.
+A snippet that legitimately ends the request (`wp_safe_redirect(); exit;`) leaves the marker
+set but produces no fatal error, so it is **not** deactivated — `Safe_Mode::decide_culprit()`
+requires a fatal-class `error_get_last()`.
+
+`execute_php()` additionally wraps `eval()` in `try/catch (\Throwable)` plus a custom error
+handler for immediate-execution code: a thrown error or an error-class errno deactivates the
+snippet; non-fatal warnings are recorded via `Safe_Mode::record_warnings()` (a
+`leastudios_snippets_warnings_{id}` transient) and surfaced as a non-blocking admin notice
+without deactivating. `Safe_Mode_Notice` renders both the deactivation and warning notices.
 
 ### Conditions
 
@@ -129,7 +137,16 @@ changing any hook.
 - PHPStan runs at level 6 with no baseline file. `phpstan-bootstrap.php` declares the plugin
   constants so analysis does not need to boot WordPress.
 - `uninstall.php` deletes all `leastudios_snippet` posts in batches of 100, drops every
-  `leastudios_snippets_error_*` transient, and removes the `leastudios_snippets_safe_mode`
-  option. Extend it whenever the plugin starts writing a new option or transient.
+  `_transient_leastudios_snippets_*` transient (error, warning, and oversize flags), and
+  removes the `leastudios_snippets_safe_mode` and `leastudios_snippets_warnings` options.
+  Extend it whenever the plugin starts writing a new option or transient.
+- `Snippet_Post_Type::map_capabilities()` inspects **both** the `$cap` argument and the
+  resolved `$caps` array. WordPress passes a generic `$cap` (`edit_post`) for per-post
+  meta-cap checks while putting the snippet-specific primitive in `$caps`; matching on
+  `$cap` alone leaves the edit screen and save flow unreachable. Do not "simplify" it back.
+- Snippet editing is gated on `DISALLOW_FILE_MODS` / `DISALLOW_FILE_EDIT` via
+  `Snippet_Post_Type::is_editing_disabled()` (filterable through
+  `leastudios_snippets_editing_disabled`). When disabled, write capabilities map to
+  `do_not_allow` and library install is blocked; already-saved snippets still execute.
 - `readme.txt` is the WordPress.org-format header, distinct from `README.md`. Keep its
   `Stable tag` and the version in `leastudios-snippets.php` in sync on every release.

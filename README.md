@@ -12,12 +12,13 @@ Manage custom PHP, JavaScript, CSS, and HTML snippets without editing theme file
 - **Auto-insert locations** — header, footer, before/after content, and more.
 - **Conditional logic** — page type, user role, post type, specific page IDs.
 - **Safe mode** — snippets that throw fatal errors are auto-deactivated with an admin notice.
+- **Warning tracking** — snippets that emit non-fatal PHP warnings stay active but surface a dismissible admin notice.
 - **Pre-built library** of hooks for leaStudios suite plugins.
 - **Priority control** for execution order.
 
 ## Safety model
 
-Only administrators with `manage_options` can create or edit snippets. A custom error handler captures fatal errors during snippet execution; the offending snippet is auto-deactivated and a safe-mode flag prevents re-execution until you fix and re-enable it.
+Only administrators with `manage_options` can create or edit snippets. A custom error handler captures fatal errors during snippet execution; the offending snippet is auto-deactivated and a safe-mode flag prevents re-execution until you fix and re-enable it. Fatal errors are contained even when they occur in deferred hooks or as uncatchable fatals, via a shutdown handler. If the site defines `DISALLOW_FILE_MODS` or `DISALLOW_FILE_EDIT`, creating and editing snippets is disabled (existing snippets keep running).
 
 ## Installation
 

@@ -13,6 +13,7 @@ This handbook documents every WordPress hook (action and filter) provided by the
    - [`leastudios_snippets_output`](#leastudios_snippets_output)
    - [`leastudios_snippets_condition_result`](#leastudios_snippets_condition_result)
    - [`leastudios_snippets_library_snippets`](#leastudios_snippets_library_snippets)
+   - [`leastudios_snippets_editing_disabled`](#leastudios_snippets_editing_disabled)
 2. [Actions](#actions)
    - [`leastudios_snippets_initialized`](#leastudios_snippets_initialized)
    - [`leastudios_snippets_before_execute`](#leastudios_snippets_before_execute)
@@ -249,6 +250,44 @@ add_filter( 'leastudios_snippets_library_snippets', function ( array $snippets )
     ];
 
     return $snippets;
+} );
+```
+
+---
+
+### `leastudios_snippets_editing_disabled`
+
+Filter whether snippet creation and editing are disabled site-wide.
+
+| Detail | Value |
+|---|---|
+| **Type** | Filter |
+| **File** | `src/CPT/Snippet_Post_Type.php` |
+| **Since** | 1.1.0 |
+
+#### Parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `$disabled` | `bool` | Whether editing is disabled. Defaults to `true` when `DISALLOW_FILE_MODS` or `DISALLOW_FILE_EDIT` is defined and truthy. |
+
+#### Description
+
+Returned by `Snippet_Post_Type::is_editing_disabled()`. When `true`, the snippet write
+capabilities map to `do_not_allow` (blocking creation/editing/deletion through the admin UI,
+REST, and WP-CLI) and the Library page refuses to install snippets. Already-saved snippets
+continue to execute.
+
+#### Example
+
+```php
+// Also lock snippet editing on the staging environment.
+add_filter( 'leastudios_snippets_editing_disabled', function ( bool $disabled ): bool {
+	if ( defined( 'WP_ENVIRONMENT_TYPE' ) && 'staging' === WP_ENVIRONMENT_TYPE ) {
+		return true;
+	}
+
+	return $disabled;
 } );
 ```
 
