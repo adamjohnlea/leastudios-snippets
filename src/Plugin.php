@@ -18,6 +18,7 @@ use LEAStudios\Snippets\Admin\Snippet_Editor;
 use LEAStudios\Snippets\Admin\Snippets_Page;
 use LEAStudios\Snippets\CPT\Snippet_Post_Type;
 use LEAStudios\Snippets\Execution\Condition_Checker;
+use LEAStudios\Snippets\Execution\Safe_Mode;
 use LEAStudios\Snippets\Execution\Snippet_Executor;
 use LEAStudios\Snippets\Library\Snippet_Library;
 
@@ -41,7 +42,9 @@ final class Plugin {
 
 		// Execute active snippets.
 		$condition_checker = new Condition_Checker();
-		$executor          = new Snippet_Executor( $condition_checker );
+		$safe_mode         = new Safe_Mode();
+		$safe_mode->init();
+		$executor = new Snippet_Executor( $condition_checker, $safe_mode );
 		$executor->init();
 
 		// Admin.
@@ -52,8 +55,8 @@ final class Plugin {
 			$editor = new Snippet_Editor();
 			$editor->init();
 
-			$safe_mode = new Safe_Mode_Notice();
-			$safe_mode->init();
+			$safe_mode_notice = new Safe_Mode_Notice();
+			$safe_mode_notice->init();
 
 			$library      = new Snippet_Library();
 			$library_page = new Library_Page( $library );

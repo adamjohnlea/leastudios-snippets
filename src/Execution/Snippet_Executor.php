@@ -38,12 +38,21 @@ class Snippet_Executor {
 	private Condition_Checker $condition_checker;
 
 	/**
+	 * Safe-mode / error-containment instance.
+	 *
+	 * @var Safe_Mode
+	 */
+	private Safe_Mode $safe_mode;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Condition_Checker $condition_checker The condition checker instance.
+	 * @param Safe_Mode         $safe_mode         The safe-mode instance.
 	 */
-	public function __construct( Condition_Checker $condition_checker ) {
+	public function __construct( Condition_Checker $condition_checker, Safe_Mode $safe_mode ) {
 		$this->condition_checker = $condition_checker;
+		$this->safe_mode         = $safe_mode;
 	}
 
 	/**
@@ -59,8 +68,6 @@ class Snippet_Executor {
 		add_action( 'save_post_' . Snippet_Post_Type::POST_TYPE, [ self::class, 'invalidate_active_cache' ] );
 		add_action( 'deleted_post', [ self::class, 'invalidate_active_cache' ] );
 
-		$safe_mode_ids = $this->get_safe_mode_ids();
-
 		$active_ids = $this->get_active_snippet_ids();
 
 		if ( empty( $active_ids ) ) {
@@ -68,7 +75,7 @@ class Snippet_Executor {
 		}
 
 		foreach ( $active_ids as $snippet_id ) {
-			if ( in_array( $snippet_id, $safe_mode_ids, true ) ) {
+			if ( $this->safe_mode->is_disabled( $snippet_id ) ) {
 				continue;
 			}
 
@@ -303,10 +310,16 @@ class Snippet_Executor {
 		 */
 		do_action( 'leastudios_snippets_before_execute', $snippet->ID, $type, $location );
 
-		if ( 'php' === $type ) {
-			$this->execute_php( $snippet->ID, $code );
-		} else {
-			$this->execute_output( $snippet->ID, $code, $type );
+		$previous_marker = $this->safe_mode->begin( $snippet->ID );
+
+		try {
+			if ( 'php' === $type ) {
+				$this->execute_php( $snippet->ID, $code );
+			} else {
+				$this->execute_output( $snippet->ID, $code, $type );
+			}
+		} finally {
+			$this->safe_mode->end( $previous_marker );
 		}
 
 		/**
@@ -324,45 +337,54 @@ class Snippet_Executor {
 	/**
 	 * Execute a PHP snippet via eval() with error handling.
 	 *
-	 * If the snippet throws an exception or triggers a PHP error, it is
-	 * automatically deactivated, added to safe mode, and an admin notice is queued.
+	 * Errors thrown during execution deactivate the snippet; non-fatal
+	 * warnings are recorded but leave the snippet active.
 	 *
 	 * @param int    $snippet_id The snippet post ID.
 	 * @param string $code       The PHP code to execute.
 	 * @return void
 	 */
 	public function execute_php( int $snippet_id, string $code ): void {
-		$error_occurred = false;
-		$error_message  = '';
+		$fatal_message = '';
+		$warnings      = [];
 
-		// Set a custom error handler to catch warnings/notices.
-		$previous_handler = set_error_handler( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
-			function ( int $errno, string $errstr, string $errfile, int $errline ) use ( &$error_occurred, &$error_message ): bool {
-				$error_occurred = true;
-				$error_message  = sprintf(
-					'%s in %s on line %d',
-					$errstr,
-					$errfile,
-					$errline
-				);
+		set_error_handler( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
+			function ( int $errno, string $errstr, string $errfile, int $errline ) use ( &$fatal_message, &$warnings ): bool {
+				$formatted = sprintf( '%s in %s on line %d', $errstr, $errfile, $errline );
+
+				if ( in_array( $errno, [ E_USER_ERROR, E_RECOVERABLE_ERROR ], true ) ) {
+					$fatal_message = $formatted;
+				} else {
+					$warnings[] = $formatted;
+				}
 
 				// Return true to prevent the default PHP error handler from running.
 				return true;
 			}
 		);
 
+		$thrown = null;
+
 		try {
 			eval( $code ); // phpcs:ignore Squiz.PHP.Eval.Discouraged
 		} catch ( \Throwable $e ) {
-			$error_occurred = true;
-			$error_message  = $e->getMessage();
+			$thrown = $e;
 		}
 
-		// Restore the previous error handler.
 		restore_error_handler();
 
-		if ( $error_occurred ) {
-			$this->handle_php_error( $snippet_id, $error_message );
+		if ( null !== $thrown ) {
+			$this->safe_mode->deactivate( $snippet_id, $thrown->getMessage() );
+			return;
+		}
+
+		if ( '' !== $fatal_message ) {
+			$this->safe_mode->deactivate( $snippet_id, $fatal_message );
+			return;
+		}
+
+		if ( ! empty( $warnings ) ) {
+			$this->safe_mode->record_warnings( $snippet_id, $warnings );
 		}
 	}
 
@@ -457,7 +479,7 @@ class Snippet_Executor {
 		}
 
 		// Check safe mode.
-		if ( in_array( $snippet_id, $this->get_safe_mode_ids(), true ) ) {
+		if ( $this->safe_mode->is_disabled( $snippet_id ) ) {
 			return '';
 		}
 
@@ -465,75 +487,5 @@ class Snippet_Executor {
 		$this->maybe_execute_snippet( $snippet, 'shortcode' );
 
 		return (string) ob_get_clean();
-	}
-
-	/**
-	 * Handle a PHP snippet error by deactivating and recording it.
-	 *
-	 * @param int    $snippet_id    The snippet post ID.
-	 * @param string $error_message The error message.
-	 * @return void
-	 */
-	private function handle_php_error( int $snippet_id, string $error_message ): void {
-		// Deactivate the snippet.
-		update_post_meta( $snippet_id, Snippet_Post_Type::META_ACTIVE, '0' );
-
-		// Add to safe mode.
-		$safe_mode_ids = $this->get_safe_mode_ids();
-
-		if ( ! in_array( $snippet_id, $safe_mode_ids, true ) ) {
-			$safe_mode_ids[] = $snippet_id;
-			update_option( 'leastudios_snippets_safe_mode', $safe_mode_ids );
-		}
-
-		// Store the error in a transient.
-		set_transient(
-			'leastudios_snippets_error_' . $snippet_id,
-			$error_message,
-			DAY_IN_SECONDS
-		);
-
-		/**
-		 * Fires when a PHP snippet encounters an error.
-		 *
-		 * @since 1.0.0
-		 *
-		 * @param int    $snippet_id    The snippet post ID.
-		 * @param string $error_message The error message.
-		 */
-		do_action( 'leastudios_snippets_php_error', $snippet_id, $error_message );
-
-		// Queue admin notice.
-		add_action(
-			'admin_notices',
-			function () use ( $snippet_id, $error_message ): void {
-				$snippet_title = get_the_title( $snippet_id );
-				printf(
-					'<div class="notice notice-error"><p>%s</p></div>',
-					sprintf(
-					/* translators: 1: Snippet title, 2: Error message. */
-						esc_html__( 'leaStudios Snippets: The snippet "%1$s" (ID: %2$d) has been deactivated due to an error: %3$s', 'leastudios-snippets' ),
-						esc_html( $snippet_title ),
-						absint( $snippet_id ),
-						esc_html( $error_message )
-					)
-				);
-			}
-		);
-	}
-
-	/**
-	 * Retrieve snippet IDs currently in safe mode.
-	 *
-	 * @return array<int, int>
-	 */
-	private function get_safe_mode_ids(): array {
-		$ids = get_option( 'leastudios_snippets_safe_mode', [] );
-
-		if ( ! is_array( $ids ) ) {
-			return [];
-		}
-
-		return array_map( 'intval', $ids );
 	}
 }
