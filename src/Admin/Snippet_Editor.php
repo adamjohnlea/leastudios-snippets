@@ -46,6 +46,8 @@ class Snippet_Editor {
 		add_action( 'add_meta_boxes_' . Snippet_Post_Type::POST_TYPE, [ $this, 'register_metaboxes' ] );
 		add_action( 'save_post_' . Snippet_Post_Type::POST_TYPE, [ $this, 'save' ], 10, 2 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'admin_notices', [ $this, 'render_oversize_notice' ] );
+		add_action( 'admin_notices', [ $this, 'render_editing_disabled_notice' ] );
 	}
 
 	/**
@@ -308,7 +310,7 @@ class Snippet_Editor {
 		}
 
 		// Check capability.
-		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
@@ -327,8 +329,14 @@ class Snippet_Editor {
 		// or the eval() path. Real-world snippets are kilobytes at most.
 		if ( isset( $_POST['leastudios_snippets_code'] ) ) {
 			$code = wp_unslash( $_POST['leastudios_snippets_code'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-			if ( is_string( $code ) && strlen( $code ) <= self::MAX_CODE_BYTES ) {
-				update_post_meta( $post_id, Snippet_Post_Type::META_CODE, $code );
+			if ( is_string( $code ) ) {
+				if ( strlen( $code ) <= self::MAX_CODE_BYTES ) {
+					update_post_meta( $post_id, Snippet_Post_Type::META_CODE, $code );
+				} else {
+					// Oversized code is not saved; flag it so the editor can
+					// tell the user instead of failing silently.
+					set_transient( 'leastudios_snippets_oversize_' . $post_id, true, MINUTE_IN_SECONDS );
+				}
 			}
 		}
 
@@ -438,6 +446,64 @@ class Snippet_Editor {
 				'editorSettings' => false !== $editor_settings ? $editor_settings : [],
 				'conditionTypes' => $this->get_condition_types(),
 			]
+		);
+	}
+
+	/**
+	 * Show a notice when a snippet's code was rejected for exceeding the size limit.
+	 *
+	 * @return void
+	 */
+	public function render_oversize_notice(): void {
+		$screen = get_current_screen();
+
+		if ( ! $screen || Snippet_Post_Type::POST_TYPE !== $screen->post_type ) {
+			return;
+		}
+
+		$post = get_post();
+
+		if ( ! $post instanceof \WP_Post ) {
+			return;
+		}
+
+		if ( ! get_transient( 'leastudios_snippets_oversize_' . $post->ID ) ) {
+			return;
+		}
+
+		delete_transient( 'leastudios_snippets_oversize_' . $post->ID );
+
+		printf(
+			'<div class="notice notice-error"><p>%s</p></div>',
+			esc_html__(
+				'leaStudios Snippets: the snippet code exceeded the 256 KB limit and was not saved.',
+				'leastudios-snippets'
+			)
+		);
+	}
+
+	/**
+	 * Show a notice on snippet screens when editing is disabled site-wide.
+	 *
+	 * @return void
+	 */
+	public function render_editing_disabled_notice(): void {
+		if ( ! Snippet_Post_Type::is_editing_disabled() ) {
+			return;
+		}
+
+		$screen = get_current_screen();
+
+		if ( ! $screen || Snippet_Post_Type::POST_TYPE !== $screen->post_type ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-info"><p>%s</p></div>',
+			esc_html__(
+				'Snippet creation and editing are disabled by this site\'s configuration. Existing snippets continue to run.',
+				'leastudios-snippets'
+			)
 		);
 	}
 
