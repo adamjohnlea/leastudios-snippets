@@ -12,6 +12,7 @@ namespace LEAStudios\Snippets\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Snippets\CPT\Snippet_Post_Type;
+use LEAStudios\Snippets\Execution\Safe_Mode;
 
 /**
  * Displays admin notices when snippets have been auto-deactivated due to PHP errors.
@@ -25,6 +26,7 @@ class Safe_Mode_Notice {
 	 */
 	public function init(): void {
 		add_action( 'admin_notices', [ $this, 'render_notices' ] );
+		add_action( 'admin_notices', [ $this, 'render_warning_notices' ] );
 		add_action( 'admin_init', [ $this, 'handle_reactivate' ] );
 	}
 
@@ -38,7 +40,7 @@ class Safe_Mode_Notice {
 			return;
 		}
 
-		$safe_mode_ids = get_option( 'leastudios_snippets_safe_mode', [] );
+		$safe_mode_ids = get_option( Safe_Mode::OPTION_SAFE_MODE, [] );
 
 		if ( ! is_array( $safe_mode_ids ) || empty( $safe_mode_ids ) ) {
 			return;
@@ -52,7 +54,7 @@ class Safe_Mode_Notice {
 				continue;
 			}
 
-			$error_transient = get_transient( 'leastudios_snippets_error_' . $snippet_id );
+			$error_transient = get_transient( Safe_Mode::ERROR_TRANSIENT_PREFIX . $snippet_id );
 			$error_message   = is_string( $error_transient ) ? $error_transient : __( 'Unknown error', 'leastudios-snippets' );
 
 			$reactivate_url = wp_nonce_url(
@@ -89,6 +91,53 @@ class Safe_Mode_Notice {
 	}
 
 	/**
+	 * Render admin notices for snippets that emitted non-fatal warnings.
+	 *
+	 * @return void
+	 */
+	public function render_warning_notices(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$warning_ids = get_option( Safe_Mode::OPTION_WARNINGS, [] );
+
+		if ( ! is_array( $warning_ids ) || empty( $warning_ids ) ) {
+			return;
+		}
+
+		foreach ( $warning_ids as $snippet_id ) {
+			$snippet_id = (int) $snippet_id;
+			$post       = get_post( $snippet_id );
+
+			if ( ! $post instanceof \WP_Post ) {
+				continue;
+			}
+
+			$warnings = get_transient( Safe_Mode::WARNINGS_TRANSIENT_PREFIX . $snippet_id );
+
+			if ( ! is_array( $warnings ) || empty( $warnings ) ) {
+				continue;
+			}
+
+			$edit_url = get_edit_post_link( $snippet_id, 'raw' );
+
+			printf(
+				'<div class="notice notice-info is-dismissible">'
+				. '<p><strong>%s</strong></p>'
+				. '<p>%s</p>'
+				. '<p><a href="%s" class="button button-secondary">%s</a></p>'
+				. '</div>',
+				/* translators: %s: snippet title */
+				sprintf( esc_html__( 'leaStudios Snippets: "%s" emitted warnings', 'leastudios-snippets' ), esc_html( $post->post_title ) ),
+				esc_html( implode( ' | ', array_map( 'strval', $warnings ) ) ),
+				esc_url( (string) $edit_url ),
+				esc_html__( 'Edit Snippet', 'leastudios-snippets' )
+			);
+		}
+	}
+
+	/**
 	 * Handle the reactivate action.
 	 *
 	 * @return void
@@ -113,18 +162,18 @@ class Safe_Mode_Notice {
 		}
 
 		// Remove from safe mode array.
-		$safe_mode_ids = get_option( 'leastudios_snippets_safe_mode', [] );
+		$safe_mode_ids = get_option( Safe_Mode::OPTION_SAFE_MODE, [] );
 
 		if ( is_array( $safe_mode_ids ) ) {
 			$safe_mode_ids = array_values( array_diff( $safe_mode_ids, [ $snippet_id ] ) );
-			update_option( 'leastudios_snippets_safe_mode', $safe_mode_ids );
+			update_option( Safe_Mode::OPTION_SAFE_MODE, $safe_mode_ids );
 		}
 
 		// Reactivate the snippet.
 		update_post_meta( $snippet_id, Snippet_Post_Type::META_ACTIVE, '1' );
 
 		// Delete the error transient.
-		delete_transient( 'leastudios_snippets_error_' . $snippet_id );
+		delete_transient( Safe_Mode::ERROR_TRANSIENT_PREFIX . $snippet_id );
 
 		/**
 		 * Fires after a snippet is reactivated from safe mode.
