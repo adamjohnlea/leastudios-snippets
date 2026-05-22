@@ -73,26 +73,31 @@ class Snippet_Post_Type {
 	public const META_CUSTOM_HOOK = '_leastudios_snippets_custom_hook';
 
 	/**
-	 * Every capability the snippet CPT introduces. We map all of them to
-	 * `manage_options` via the {@see map_capabilities} filter, so only
-	 * administrators can create, edit, publish, or delete snippets — which
-	 * is required because publishing a snippet means executing arbitrary
-	 * PHP / JS / CSS / HTML on the site.
+	 * Read-only snippet capabilities. Always mapped to `manage_options`.
 	 *
 	 * @var array<int, string>
 	 */
-	private const SNIPPET_CAPABILITIES = [
-		// Meta caps (per-post).
-		'edit_leastudios_snippet',
+	private const READ_CAPABILITIES = [
 		'read_leastudios_snippet',
+		'read_private_leastudios_snippets',
+	];
+
+	/**
+	 * Write snippet capabilities. Mapped to `manage_options`, or to
+	 * `do_not_allow` when {@see is_editing_disabled()} is true — because
+	 * creating or editing a snippet means executing arbitrary code, which
+	 * a site running DISALLOW_FILE_MODS has explicitly opted out of.
+	 *
+	 * @var array<int, string>
+	 */
+	private const WRITE_CAPABILITIES = [
+		'edit_leastudios_snippet',
 		'delete_leastudios_snippet',
-		// Primitive caps.
 		'edit_leastudios_snippets',
 		'edit_others_leastudios_snippets',
 		'edit_private_leastudios_snippets',
 		'edit_published_leastudios_snippets',
 		'publish_leastudios_snippets',
-		'read_private_leastudios_snippets',
 		'delete_leastudios_snippets',
 		'delete_private_leastudios_snippets',
 		'delete_published_leastudios_snippets',
@@ -122,24 +127,51 @@ class Snippet_Post_Type {
 	];
 
 	/**
-	 * Gate every snippet capability on `manage_options`.
+	 * Gate snippet capabilities.
 	 *
-	 * WordPress derives a family of primitive and meta capabilities from
-	 * `capability_type = 'leastudios_snippet'`. Without this filter those
-	 * primitive caps are not granted to any role, so nobody can edit
-	 * snippets. Mapping them all to `manage_options` cleanly delegates the
-	 * decision to the existing site-admin gate without polluting role caps.
+	 * Read capabilities always map to `manage_options`. Write capabilities map
+	 * to `manage_options` normally, or to `do_not_allow` when snippet editing
+	 * is disabled site-wide.
 	 *
 	 * @param array<int, string> $caps The required primitive capabilities.
 	 * @param string             $cap  The capability being checked.
 	 * @return array<int, string>
 	 */
 	public static function map_capabilities( array $caps, string $cap ): array {
-		if ( in_array( $cap, self::SNIPPET_CAPABILITIES, true ) ) {
+		if ( in_array( $cap, self::READ_CAPABILITIES, true ) ) {
 			return [ 'manage_options' ];
 		}
 
+		if ( in_array( $cap, self::WRITE_CAPABILITIES, true ) ) {
+			return self::is_editing_disabled() ? [ 'do_not_allow' ] : [ 'manage_options' ];
+		}
+
 		return $caps;
+	}
+
+	/**
+	 * Whether snippet creation and editing are disabled site-wide.
+	 *
+	 * True when the site defines `DISALLOW_FILE_MODS` or `DISALLOW_FILE_EDIT`
+	 * as truthy — snippets are an equivalent code-execution surface to the
+	 * theme/plugin file editors those constants disable.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return bool
+	 */
+	public static function is_editing_disabled(): bool {
+		$disabled = ( defined( 'DISALLOW_FILE_MODS' ) && constant( 'DISALLOW_FILE_MODS' ) )
+			|| ( defined( 'DISALLOW_FILE_EDIT' ) && constant( 'DISALLOW_FILE_EDIT' ) );
+
+		/**
+		 * Filters whether snippet creation and editing are disabled.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param bool $disabled Whether snippet editing is disabled.
+		 */
+		return (bool) apply_filters( 'leastudios_snippets_editing_disabled', $disabled );
 	}
 
 	/**
