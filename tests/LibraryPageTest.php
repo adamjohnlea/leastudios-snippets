@@ -18,6 +18,11 @@ use LEAStudios\Tests\TestCase;
  */
 class LibraryPageTest extends TestCase {
 
+	public function tear_down(): void {
+		unset( $_POST['_leastudios_snippets_library_nonce'], $_POST['snippet_slug'] );
+		parent::tear_down();
+	}
+
 	public function test_handle_install_blocked_when_editing_disabled(): void {
 		add_filter( 'leastudios_snippets_editing_disabled', '__return_true' );
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );

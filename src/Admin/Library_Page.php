@@ -104,17 +104,17 @@ class Library_Page {
 		 */
 		$categories = (array) apply_filters( 'leastudios_snippets_library_categories', $categories );
 
-		$plugin_labels = [
+		$plugin_labels    = [
 			'leastudios-mailer' => __( 'leaStudios Mailer', 'leastudios-snippets' ),
 			'leastudios-forms'  => __( 'leaStudios Forms', 'leastudios-snippets' ),
 		];
+		$editing_disabled = Snippet_Post_Type::is_editing_disabled();
 		?>
 		<div class="wrap leastudios-snippets-library-wrap">
 			<h1><?php esc_html_e( 'Snippet Library', 'leastudios-snippets' ); ?></h1>
-			<?php $editing_disabled = Snippet_Post_Type::is_editing_disabled(); ?>
 			<?php if ( $editing_disabled ) : ?>
 				<div class="notice notice-info inline">
-					<p><?php esc_html_e( 'Installing snippets is disabled because this site has DISALLOW_FILE_MODS enabled.', 'leastudios-snippets' ); ?></p>
+					<p><?php esc_html_e( 'Installing snippets is disabled by this site\'s configuration.', 'leastudios-snippets' ); ?></p>
 				</div>
 			<?php endif; ?>
 			<p class="description">
@@ -169,7 +169,9 @@ class Library_Page {
 							</p>
 
 							<div class="leastudios-snippets-library-card__footer">
-								<?php if ( $is_available && ! $editing_disabled ) : ?>
+								<?php if ( $editing_disabled ) : ?>
+									<?php // Editing disabled — no install action. ?>
+								<?php elseif ( $is_available ) : ?>
 									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 										<input type="hidden" name="action" value="leastudios_snippets_install_library" />
 										<input type="hidden" name="snippet_slug" value="<?php echo esc_attr( $snippet['slug'] ?? '' ); ?>" />
@@ -217,7 +219,7 @@ class Library_Page {
 		if ( Snippet_Post_Type::is_editing_disabled() ) {
 			wp_die(
 				esc_html__(
-					'Snippet editing is disabled on this site because DISALLOW_FILE_MODS is enabled.',
+					'Snippet installation is disabled by this site\'s configuration.',
 					'leastudios-snippets'
 				)
 			);
