@@ -47,7 +47,6 @@ class Snippet_Editor {
 		add_action( 'save_post_' . Snippet_Post_Type::POST_TYPE, [ $this, 'save' ], 10, 2 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices', [ $this, 'render_oversize_notice' ] );
-		add_action( 'admin_notices', [ $this, 'render_editing_disabled_notice' ] );
 	}
 
 	/**
@@ -478,31 +477,6 @@ class Snippet_Editor {
 			'<div class="notice notice-error"><p>%s</p></div>',
 			esc_html__(
 				'leaStudios Snippets: the snippet code exceeded the 256 KB limit and was not saved.',
-				'leastudios-snippets'
-			)
-		);
-	}
-
-	/**
-	 * Show a notice on snippet screens when editing is disabled site-wide.
-	 *
-	 * @return void
-	 */
-	public function render_editing_disabled_notice(): void {
-		if ( ! Snippet_Post_Type::is_editing_disabled() ) {
-			return;
-		}
-
-		$screen = get_current_screen();
-
-		if ( ! $screen || Snippet_Post_Type::POST_TYPE !== $screen->post_type ) {
-			return;
-		}
-
-		printf(
-			'<div class="notice notice-info"><p>%s</p></div>',
-			esc_html__(
-				'Snippet creation and editing are disabled by this site\'s configuration. Existing snippets continue to run.',
 				'leastudios-snippets'
 			)
 		);

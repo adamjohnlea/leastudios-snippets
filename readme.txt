@@ -4,7 +4,7 @@ Tags: code snippets, custom code, php, css, javascript
 Requires at least: 6.4
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -44,6 +44,9 @@ Only administrators with `manage_options` capability can create or edit snippets
 Yes. Each snippet supports conditional logic based on page type, user role, post type, and specific page/post IDs. You can also choose auto-insert locations like header, footer, or before/after content.
 
 == Changelog ==
+
+= 1.1.1 =
+* Maintenance: removed an unreachable admin notice. The editing-disabled state remains visible on the Snippet Library screen.
 
 = 1.1.0 =
 * Safe mode now contains fatal errors in deferred hook callbacks and uncatchable fatals via a shutdown handler.
