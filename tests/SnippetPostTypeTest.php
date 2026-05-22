@@ -59,6 +59,8 @@ class SnippetPostTypeTest extends TestCase {
 	}
 
 	public function test_is_editing_disabled_filterable(): void {
+		// DISALLOW_FILE_MODS / DISALLOW_FILE_EDIT cannot be undefined between tests,
+		// so the constant path is covered via the editing-disabled filter seam.
 		add_filter( 'leastudios_snippets_editing_disabled', '__return_true' );
 		$this->assertTrue( Snippet_Post_Type::is_editing_disabled() );
 	}

@@ -161,6 +161,7 @@ class Snippet_Post_Type {
 	 * @return bool
 	 */
 	public static function is_editing_disabled(): bool {
+		// Use constant() rather than a direct reference so an undefined constant is not a fatal.
 		$disabled = ( defined( 'DISALLOW_FILE_MODS' ) && constant( 'DISALLOW_FILE_MODS' ) )
 			|| ( defined( 'DISALLOW_FILE_EDIT' ) && constant( 'DISALLOW_FILE_EDIT' ) );
 
