@@ -38,19 +38,21 @@ while ( true ) {
 	}
 }
 
-// Drop every per-snippet error transient. The Snippet_Executor's safe-mode
-// path stashes errors under `leastudios_snippets_error_<id>`; removing the
-// post above doesn't clean these up.
+// Drop every plugin transient — per-snippet error and warning messages
+// (`leastudios_snippets_error_<id>`, `leastudios_snippets_warnings_<id>`) and
+// the oversized-code flags (`leastudios_snippets_oversize_<id>`). Removing the
+// posts above does not clean these up.
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 $wpdb->query(
 	$wpdb->prepare(
 		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-		$wpdb->esc_like( '_transient_leastudios_snippets_error_' ) . '%',
-		$wpdb->esc_like( '_transient_timeout_leastudios_snippets_error_' ) . '%'
+		$wpdb->esc_like( '_transient_leastudios_snippets_' ) . '%',
+		$wpdb->esc_like( '_transient_timeout_leastudios_snippets_' ) . '%'
 	)
 );
 
 // Delete options.
 delete_option( 'leastudios_snippets_safe_mode' );
+delete_option( 'leastudios_snippets_warnings' );
 
 flush_rewrite_rules();
