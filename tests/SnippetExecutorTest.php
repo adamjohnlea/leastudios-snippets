@@ -40,6 +40,7 @@ class SnippetExecutorTest extends TestCase {
 		$this->make_executor()->execute_php( $id, 'throw new \RuntimeException( "boom" );' );
 
 		$this->assertSame( '0', get_post_meta( $id, Snippet_Post_Type::META_ACTIVE, true ) );
+		$this->assertTrue( ( new Safe_Mode() )->is_disabled( $id ) );
 	}
 
 	public function test_execute_php_with_notice_keeps_snippet_active(): void {
@@ -49,7 +50,7 @@ class SnippetExecutorTest extends TestCase {
 		$this->make_executor()->execute_php( $id, 'trigger_error( "just a notice", E_USER_NOTICE );' );
 
 		$this->assertSame( '1', get_post_meta( $id, Snippet_Post_Type::META_ACTIVE, true ) );
-		$this->assertIsArray( get_transient( 'leastudios_snippets_warnings_' . $id ) );
+		$this->assertIsArray( get_transient( Safe_Mode::WARNINGS_TRANSIENT_PREFIX . $id ) );
 	}
 
 	public function test_execute_output_wraps_js(): void {
