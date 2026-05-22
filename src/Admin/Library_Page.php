@@ -11,6 +11,7 @@ namespace LEAStudios\Snippets\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Snippets\CPT\Snippet_Post_Type;
 use LEAStudios\Snippets\Library\Snippet_Library;
 use LEAStudios\Snippets\Suite\Suite_Detector;
 
@@ -110,6 +111,12 @@ class Library_Page {
 		?>
 		<div class="wrap leastudios-snippets-library-wrap">
 			<h1><?php esc_html_e( 'Snippet Library', 'leastudios-snippets' ); ?></h1>
+			<?php $editing_disabled = Snippet_Post_Type::is_editing_disabled(); ?>
+			<?php if ( $editing_disabled ) : ?>
+				<div class="notice notice-info inline">
+					<p><?php esc_html_e( 'Installing snippets is disabled because this site has DISALLOW_FILE_MODS enabled.', 'leastudios-snippets' ); ?></p>
+				</div>
+			<?php endif; ?>
 			<p class="description">
 				<?php esc_html_e( 'Browse and install pre-built code snippets. Installed snippets are inactive by default — review and activate them from the editor.', 'leastudios-snippets' ); ?>
 			</p>
@@ -162,7 +169,7 @@ class Library_Page {
 							</p>
 
 							<div class="leastudios-snippets-library-card__footer">
-								<?php if ( $is_available ) : ?>
+								<?php if ( $is_available && ! $editing_disabled ) : ?>
 									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 										<input type="hidden" name="action" value="leastudios_snippets_install_library" />
 										<input type="hidden" name="snippet_slug" value="<?php echo esc_attr( $snippet['slug'] ?? '' ); ?>" />
@@ -205,6 +212,15 @@ class Library_Page {
 			! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_leastudios_snippets_library_nonce'] ) ), 'leastudios_snippets_install_library' )
 		) {
 			wp_die( esc_html__( 'Security check failed.', 'leastudios-snippets' ) );
+		}
+
+		if ( Snippet_Post_Type::is_editing_disabled() ) {
+			wp_die(
+				esc_html__(
+					'Snippet editing is disabled on this site because DISALLOW_FILE_MODS is enabled.',
+					'leastudios-snippets'
+				)
+			);
 		}
 
 		$slug = isset( $_POST['snippet_slug'] ) ? sanitize_key( wp_unslash( (string) $_POST['snippet_slug'] ) ) : '';
