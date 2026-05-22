@@ -50,4 +50,24 @@ class SnippetEditorTest extends TestCase {
 		$this->assertSame( 'echo "hello";', get_post_meta( $post_id, Snippet_Post_Type::META_CODE, true ) );
 		$this->assertFalse( get_transient( 'leastudios_snippets_oversize_' . $post_id ) );
 	}
+
+	public function test_save_blocked_when_editing_disabled(): void {
+		add_filter( 'leastudios_snippets_editing_disabled', '__return_true' );
+		$admin_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
+		wp_set_current_user( $admin_id );
+		$post_id = self::factory()->post->create(
+			[
+				'post_type'   => Snippet_Post_Type::POST_TYPE,
+				'post_author' => $admin_id,
+			]
+		);
+		update_post_meta( $post_id, Snippet_Post_Type::META_CODE, 'original' );
+
+		$_POST['_leastudios_snippets_nonce'] = wp_create_nonce( 'leastudios_snippets_save_snippet' );
+		$_POST['leastudios_snippets_code']   = 'echo "changed";';
+
+		( new Snippet_Editor() )->save( $post_id, get_post( $post_id ) );
+
+		$this->assertSame( 'original', get_post_meta( $post_id, Snippet_Post_Type::META_CODE, true ) );
+	}
 }

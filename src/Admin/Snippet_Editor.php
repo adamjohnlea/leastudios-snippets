@@ -309,8 +309,9 @@ class Snippet_Editor {
 			return;
 		}
 
-		// Check capability.
-		if ( ! current_user_can( 'manage_options' ) ) {
+		// Check capability. The map_meta_cap filter routes this to
+		// manage_options, or to do_not_allow under DISALLOW_FILE_MODS.
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
 

@@ -133,17 +133,37 @@ class Snippet_Post_Type {
 	 * to `manage_options` normally, or to `do_not_allow` when snippet editing
 	 * is disabled site-wide.
 	 *
+	 * A per-post meta-cap check (`edit_post`, `delete_post`, `read_post` against
+	 * a snippet) reaches this filter with a generic `$cap`; WordPress has already
+	 * resolved it to the snippet-specific primitive, which is in `$caps` instead.
+	 * Both arguments are inspected so meta-cap checks gate the same as bare
+	 * primitive checks — without it, the snippet edit screen and save flow are
+	 * unreachable because no role holds the raw `*_leastudios_snippet(s)` caps.
+	 *
 	 * @param array<int, string> $caps The required primitive capabilities.
 	 * @param string             $cap  The capability being checked.
 	 * @return array<int, string>
 	 */
 	public static function map_capabilities( array $caps, string $cap ): array {
-		if ( in_array( $cap, self::READ_CAPABILITIES, true ) ) {
-			return [ 'manage_options' ];
+		$is_read  = in_array( $cap, self::READ_CAPABILITIES, true );
+		$is_write = in_array( $cap, self::WRITE_CAPABILITIES, true );
+
+		foreach ( $caps as $required ) {
+			if ( in_array( $required, self::WRITE_CAPABILITIES, true ) ) {
+				$is_write = true;
+			} elseif ( in_array( $required, self::READ_CAPABILITIES, true ) ) {
+				$is_read = true;
+			}
 		}
 
-		if ( in_array( $cap, self::WRITE_CAPABILITIES, true ) ) {
+		// Write gates take precedence: a check that touches both is the
+		// stricter case under DISALLOW_FILE_MODS.
+		if ( $is_write ) {
 			return self::is_editing_disabled() ? [ 'do_not_allow' ] : [ 'manage_options' ];
+		}
+
+		if ( $is_read ) {
+			return [ 'manage_options' ];
 		}
 
 		return $caps;

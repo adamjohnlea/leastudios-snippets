@@ -64,4 +64,50 @@ class SnippetPostTypeTest extends TestCase {
 		add_filter( 'leastudios_snippets_editing_disabled', '__return_true' );
 		$this->assertTrue( Snippet_Post_Type::is_editing_disabled() );
 	}
+
+	public function test_admin_can_edit_a_snippet_post(): void {
+		$admin_id   = self::factory()->user->create( [ 'role' => 'administrator' ] );
+		$snippet_id = self::factory()->post->create(
+			[
+				'post_type'   => Snippet_Post_Type::POST_TYPE,
+				'post_author' => $admin_id,
+			]
+		);
+
+		$this->assertTrue( user_can( $admin_id, 'edit_post', $snippet_id ) );
+	}
+
+	public function test_non_admin_cannot_edit_a_snippet_post(): void {
+		$editor_id  = self::factory()->user->create( [ 'role' => 'editor' ] );
+		$snippet_id = self::factory()->post->create(
+			[ 'post_type' => Snippet_Post_Type::POST_TYPE ]
+		);
+
+		$this->assertFalse( user_can( $editor_id, 'edit_post', $snippet_id ) );
+	}
+
+	public function test_snippet_edit_denied_when_editing_disabled(): void {
+		add_filter( 'leastudios_snippets_editing_disabled', '__return_true' );
+		$admin_id   = self::factory()->user->create( [ 'role' => 'administrator' ] );
+		$snippet_id = self::factory()->post->create(
+			[
+				'post_type'   => Snippet_Post_Type::POST_TYPE,
+				'post_author' => $admin_id,
+			]
+		);
+
+		$this->assertFalse( user_can( $admin_id, 'edit_post', $snippet_id ) );
+	}
+
+	public function test_admin_editing_regular_post_is_unaffected(): void {
+		$admin_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
+		$post_id  = self::factory()->post->create(
+			[
+				'post_type'   => 'post',
+				'post_author' => $admin_id,
+			]
+		);
+
+		$this->assertTrue( user_can( $admin_id, 'edit_post', $post_id ) );
+	}
 }
