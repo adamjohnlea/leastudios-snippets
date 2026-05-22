@@ -20,29 +20,21 @@ class Safe_Mode {
 
 	/**
 	 * Option holding the list of auto-deactivated snippet IDs.
-	 *
-	 * @var string
 	 */
 	public const OPTION_SAFE_MODE = 'leastudios_snippets_safe_mode';
 
 	/**
 	 * Option holding the list of snippet IDs that emitted warnings.
-	 *
-	 * @var string
 	 */
 	public const OPTION_WARNINGS = 'leastudios_snippets_warnings';
 
 	/**
 	 * Transient key prefix for a deactivated snippet's error message.
-	 *
-	 * @var string
 	 */
 	public const ERROR_TRANSIENT_PREFIX = 'leastudios_snippets_error_';
 
 	/**
 	 * Transient key prefix for a snippet's recorded warning messages.
-	 *
-	 * @var string
 	 */
 	public const WARNINGS_TRANSIENT_PREFIX = 'leastudios_snippets_warnings_';
 

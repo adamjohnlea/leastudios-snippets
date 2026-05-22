@@ -73,4 +73,13 @@ class SafeModeTest extends TestCase {
 		$this->assertTrue( $safe_mode->is_disabled( 10 ) );
 		$this->assertFalse( $safe_mode->is_disabled( 30 ) );
 	}
+
+	public function test_get_disabled_ids_returns_empty_array_when_option_is_corrupted(): void {
+		update_option( 'leastudios_snippets_safe_mode', 'corrupted' );
+		$this->assertSame( [], ( new Safe_Mode() )->get_disabled_ids() );
+	}
+
+	public function test_decide_culprit_returns_null_when_error_has_no_type(): void {
+		$this->assertNull( ( new Safe_Mode() )->decide_culprit( [], 42 ) );
+	}
 }
