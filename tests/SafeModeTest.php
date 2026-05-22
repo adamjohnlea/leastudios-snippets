@@ -105,16 +105,14 @@ class SafeModeTest extends TestCase {
 			[ 'post_type' => \LEAStudios\Snippets\CPT\Snippet_Post_Type::POST_TYPE ]
 		);
 		$captured = [];
-		add_action(
-			'leastudios_snippets_php_error',
-			function ( $sid, $msg ) use ( &$captured ): void {
-				$captured = [ $sid, $msg ];
-			},
-			10,
-			2
-		);
+		$listener = function ( $sid, $msg ) use ( &$captured ): void {
+			$captured = [ $sid, $msg ];
+		};
+		add_action( 'leastudios_snippets_php_error', $listener, 10, 2 );
 
 		( new Safe_Mode() )->deactivate( $id, 'oops' );
+
+		remove_action( 'leastudios_snippets_php_error', $listener, 10 );
 
 		$this->assertSame( [ $id, 'oops' ], $captured );
 	}
@@ -143,6 +141,7 @@ class SafeModeTest extends TestCase {
 		);
 		( new Safe_Mode() )->record_warnings( $id, [] );
 		$this->assertFalse( get_transient( 'leastudios_snippets_warnings_' . $id ) );
+		$this->assertSame( [], get_option( 'leastudios_snippets_warnings', [] ) );
 	}
 
 	public function test_clear_warnings_removes_transient_and_index(): void {

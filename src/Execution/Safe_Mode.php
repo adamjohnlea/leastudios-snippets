@@ -172,11 +172,7 @@ class Safe_Mode {
 			DAY_IN_SECONDS
 		);
 
-		$index = get_option( self::OPTION_WARNINGS, [] );
-
-		if ( ! is_array( $index ) ) {
-			$index = [];
-		}
+		$index = $this->get_warnings_index();
 
 		if ( ! in_array( $snippet_id, $index, true ) ) {
 			$index[] = $snippet_id;
@@ -193,14 +189,25 @@ class Safe_Mode {
 	public function clear_warnings( int $snippet_id ): void {
 		delete_transient( self::WARNINGS_TRANSIENT_PREFIX . $snippet_id );
 
-		$index = get_option( self::OPTION_WARNINGS, [] );
+		$index = $this->get_warnings_index();
 
-		if ( is_array( $index ) && in_array( $snippet_id, $index, true ) ) {
+		if ( in_array( $snippet_id, $index, true ) ) {
 			update_option(
 				self::OPTION_WARNINGS,
 				array_values( array_diff( $index, [ $snippet_id ] ) )
 			);
 		}
+	}
+
+	/**
+	 * Read the warnings index option, guarding against a corrupted value.
+	 *
+	 * @return array<int, int>
+	 */
+	private function get_warnings_index(): array {
+		$index = get_option( self::OPTION_WARNINGS, [] );
+
+		return is_array( $index ) ? $index : [];
 	}
 
 	/**
