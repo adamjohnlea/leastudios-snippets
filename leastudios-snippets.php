@@ -3,7 +3,7 @@
  * Plugin Name:       leaStudios Snippets
  * Plugin URI:        https://leastudios.com/plugins/leastudios-snippets
  * Description:       Manage custom code snippets (PHP, JS, CSS, HTML) with auto-insert locations, safe error handling, and a pre-built library of leaStudios suite hooks.
- * Version:           1.1.2
+ * Version:           1.1.3
  * Requires at least: 6.4
  * Requires PHP:      8.2
  * Author:            leaStudios
@@ -20,7 +20,12 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'LEASTUDIOS_SNIPPETS_VERSION', '1.1.1' );
+// Derive the version from the plugin header so the runtime constant can
+// never drift from the version shipped in the release zip.
+define(
+	'LEASTUDIOS_SNIPPETS_VERSION',
+	get_file_data( __FILE__, [ 'Version' => 'Version' ] )['Version']
+);
 define( 'LEASTUDIOS_SNIPPETS_FILE', __FILE__ );
 define( 'LEASTUDIOS_SNIPPETS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LEASTUDIOS_SNIPPETS_URL', plugin_dir_url( __FILE__ ) );
