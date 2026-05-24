@@ -4,7 +4,7 @@ Tags: code snippets, custom code, php, css, javascript
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.2
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -44,6 +44,17 @@ Only administrators with `manage_options` capability can create or edit snippets
 Yes. Each snippet supports conditional logic based on page type, user role, post type, and specific page/post IDs. You can also choose auto-insert locations like header, footer, or before/after content.
 
 == Changelog ==
+
+= 1.1.4 — 2026-05-24 =
+
+* Docs: developer handbook upgraded to canonical shape.
+
+= 1.1.3 =
+* Fix: derive `VERSION` constant from the plugin header so the runtime constant can never drift from the release-zip version.
+
+= 1.1.2 =
+* Fix: declare compatibility with WordPress 7.0.
+* Internal: tag-triggered release workflow with auto-generated notes; CI hardening (gitleaks secret scan, dependency bumps).
 
 = 1.1.1 =
 * Maintenance: removed an unreachable admin notice. The editing-disabled state remains visible on the Snippet Library screen.
